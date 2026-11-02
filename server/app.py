@@ -89,13 +89,39 @@ def get_workouts():
     user = current_user()
     page = request.args.get("page", 1, type=int)
     per_page = request.args.get("per_page", 5, type=int)
-    per_page = max(1, min(per_page, 50))  # keep it between 1 and 50
+    per_page = max(1, min(per_page, 50))
 
     pagination = (
         Workout.query.filter_by(user_id=user.id)
         .order_by(Workout.date.desc(), Workout.id.desc())
         .paginate(page=page, per_page=per_page, error_out=False)
     )
+
+
+@app.route("/workouts", methods=["POST"])
+@login_required
+def create_workout():
+    json_data = request.get_json(silent=True)
+    if not json_data:
+        return jsonify({"error": "No input data provided"}), 400
+
+    try:
+        data = workout_schema.load(json_data)
+    except ValidationError as err:
+        return jsonify({"errors": err.messages}), 422
+
+    try:
+        workout = Workout(**data, user=current_user())
+        db.session.add(workout)
+        db.session.commit()
+    except ValueError as err:
+        db.session.rollback()
+        return jsonify({"error": str(err)}), 422
+    except IntegrityError:
+        db.session.rollback()
+        return jsonify({"error": "Could not save workout"}), 422
+
+    return jsonify(workout_schema.dump(workout)), 201
 
     return (
         jsonify(
