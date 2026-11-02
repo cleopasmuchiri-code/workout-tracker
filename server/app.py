@@ -1,6 +1,7 @@
 from flask import request, session, jsonify
 from marshmallow import ValidationError
 from sqlalchemy.exc import IntegrityError
+from functools import wraps
 
 from config import app, db
 from models import User, Workout
@@ -9,6 +10,22 @@ from schemas import UserSchema, WorkoutSchema
 user_schema = UserSchema()
 workout_schema = WorkoutSchema()
 workouts_schema = WorkoutSchema(many=True)
+
+
+def login_required(func):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        user_id = session.get("user_id")
+        user = db.session.get(User, user_id) if user_id else None
+        if user is None:
+            return jsonify({"error": "Unauthorized"}), 401
+        return func(*args, **kwargs)
+
+    return wrapper
+
+
+def current_user():
+    return db.session.get(User, session["user_id"])
 
 
 @app.route("/signup", methods=["POST"])
