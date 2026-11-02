@@ -50,5 +50,21 @@ def login():
     return jsonify(user_schema.dump(user)), 200
 
 
+@app.route("/logout", methods=["DELETE"])
+def logout():
+    session.pop("user_id", None)
+    return "", 204
+
+
+@app.route("/check_session", methods=["GET"])
+def check_session():
+    user_id = session.get("user_id")
+    user = db.session.get(User, user_id) if user_id else None
+
+    if user is None:
+        return jsonify({"error": "Unauthorized"}), 401
+    return jsonify(user_schema.dump(user)), 200
+
+
 if __name__ == "__main__":
     app.run(port=5555, debug=True)
