@@ -137,6 +137,36 @@ def create_workout():
     )
 
 
+@app.route("/workouts/<int:id>", methods=["PATCH"])
+@login_required
+def update_workout(id):
+    workout = Workout.query.filter_by(id=id, user_id=current_user().id).first()
+    if workout is None:
+        return jsonify({"error": "Workout not found"}), 404
+
+    json_data = request.get_json(silent=True)
+    if not json_data:
+        return jsonify({"error": "No input data provided"}), 400
+
+    try:
+        data = workout_schema.load(json_data, partial=True)
+    except ValidationError as err:
+        return jsonify({"errors": err.messages}), 422
+
+    try:
+        for key, value in data.items():
+            setattr(workout, key, value)
+        db.session.commit()
+    except ValueError as err:
+        db.session.rollback()
+        return jsonify({"error": str(err)}), 422
+    except IntegrityError:
+        db.session.rollback()
+        return jsonify({"error": "Could not update workout"}), 422
+
+    return jsonify(workout_schema.dump(workout)), 200
+
+
 @app.route("/workouts/<int:id>", methods=["DELETE"])
 @login_required
 def delete_workout(id):
