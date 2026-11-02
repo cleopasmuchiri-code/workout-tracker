@@ -83,5 +83,33 @@ def check_session():
     return jsonify(user_schema.dump(user)), 200
 
 
+@app.route("/workouts", methods=["GET"])
+@login_required
+def get_workouts():
+    user = current_user()
+    page = request.args.get("page", 1, type=int)
+    per_page = request.args.get("per_page", 5, type=int)
+    per_page = max(1, min(per_page, 50))  # keep it between 1 and 50
+
+    pagination = (
+        Workout.query.filter_by(user_id=user.id)
+        .order_by(Workout.date.desc(), Workout.id.desc())
+        .paginate(page=page, per_page=per_page, error_out=False)
+    )
+
+    return (
+        jsonify(
+            {
+                "page": pagination.page,
+                "per_page": pagination.per_page,
+                "total": pagination.total,
+                "pages": pagination.pages,
+                "items": workouts_schema.dump(pagination.items),
+            }
+        ),
+        200,
+    )
+
+
 if __name__ == "__main__":
     app.run(port=5555, debug=True)
