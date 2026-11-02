@@ -137,5 +137,17 @@ def create_workout():
     )
 
 
+@app.route("/workouts/<int:id>", methods=["DELETE"])
+@login_required
+def delete_workout(id):
+    workout = Workout.query.filter_by(id=id, user_id=current_user().id).first()
+    if workout is None:
+        return jsonify({"error": "Workout not found"}), 404
+
+    db.session.delete(workout)
+    db.session.commit()
+    return "", 204
+
+
 if __name__ == "__main__":
     app.run(port=5555, debug=True)
